@@ -4,12 +4,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Padel Board</title>
 
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" rel="stylesheet">
+
 <style>
 body {
   margin: 0;
   background: black;
   color: white;
-  font-family: Arial;
+  font-family: 'Rubik', sans-serif;
   overflow: hidden;
 }
 
@@ -33,6 +35,7 @@ body {
 
 .points {
   font-size: 100px;
+  font-weight: bold;
 }
 
 .games, .sets {
@@ -44,11 +47,18 @@ body {
   top: 5px;
   width: 100%;
   text-align: center;
-  font-size: 18px;
+  font-size: 16px;
 }
 
-.golden {
-  color: gold;
+.toggle {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,255,255,0.1);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
 }
 </style>
 </head>
@@ -74,6 +84,10 @@ body {
   </div>
 </div>
 
+<div class="toggle" onclick="toggleGoldenMode()">
+  🔥 Toggle Golden Mode
+</div>
+
 <script>
 let scoreNames = ["0","15","30","40"];
 
@@ -87,6 +101,7 @@ let state = {
 let history = [];
 
 let golden = false;
+let manualGolden = false;
 let deuceCount = 0;
 let matchOver = false;
 
@@ -97,7 +112,8 @@ function cloneState(){
     state,
     golden,
     deuceCount,
-    matchOver
+    matchOver,
+    manualGolden
   }));
 }
 
@@ -112,6 +128,7 @@ function undo(){
     golden = prev.golden;
     deuceCount = prev.deuceCount;
     matchOver = prev.matchOver;
+    manualGolden = prev.manualGolden;
     update();
   }
 }
@@ -128,7 +145,7 @@ function update(){
   let displayA, displayB;
 
   if(state.a>=3 && state.b>=3){
-    if(golden){
+    if(golden || manualGolden){
       displayA="40"; displayB="40";
     } else if(state.adv==="A"){
       displayA="AD"; displayB="";
@@ -151,13 +168,15 @@ function update(){
 
   document.getElementById("mode").innerText =
     matchOver ? "🏆 MATCH FINISHED" :
-    golden ? "🔥 GOLDEN POINT" :
+    manualGolden ? "🔥 MANUAL GOLDEN" :
+    golden ? "🔥 AUTO GOLDEN" :
     "Normal";
 }
 
 function resetPoints(){
   state.a=0; state.b=0; state.adv=null;
   golden = false;
+  deuceCount = 0;
 }
 
 function checkMatchWin(){
@@ -210,7 +229,7 @@ function pointA(){
         handleDeuce();
       }
 
-      if(golden){
+      if(golden || manualGolden){
         winGame("A");
       } else {
         if(state.adv==="A") winGame("A");
@@ -234,7 +253,7 @@ function pointB(){
         handleDeuce();
       }
 
-      if(golden){
+      if(golden || manualGolden){
         winGame("B");
       } else {
         if(state.adv==="B") winGame("B");
@@ -246,7 +265,7 @@ function pointB(){
   update();
 }
 
-// TAP GESTURE
+// tap + double tap undo
 let lastTap = 0;
 
 function handleTap(side){
@@ -264,6 +283,11 @@ function handleTap(side){
 
 document.getElementById("leftSide").addEventListener("click", () => handleTap("left"));
 document.getElementById("rightSide").addEventListener("click", () => handleTap("right"));
+
+function toggleGoldenMode(){
+  manualGolden = !manualGolden;
+  update();
+}
 
 // fullscreen
 function goFullscreen(){
