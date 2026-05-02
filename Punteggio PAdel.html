@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Padel Board</title>
+
+<style>
+body {
+  margin: 0;
+  background: black;
+  color: white;
+  font-family: Arial;
+  overflow: hidden;
+}
+
+.container {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+}
+
+.side {
+  width: 50%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.left { background: #1e90ff; }
+.right { background: #ff3b3b; }
+
+.points {
+  font-size: 100px;
+}
+
+.games, .sets {
+  font-size: 28px;
+}
+
+.topbar {
+  position: absolute;
+  top: 5px;
+  width: 100%;
+  text-align: center;
+  font-size: 18px;
+}
+
+.golden {
+  color: gold;
+}
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+  <span id="timer">00:00</span> | 
+  <span id="mode">Normal</span>
+</div>
+
+<div class="container">
+  <div class="side left" id="leftSide">
+    <div class="points" id="pointsA">0</div>
+    <div class="games">G: <span id="gamesA">0</span></div>
+    <div class="sets">S: <span id="setsA">0</span></div>
+  </div>
+
+  <div class="side right" id="rightSide">
+    <div class="points" id="pointsB">0</div>
+    <div class="games">G: <span id="gamesB">0</span></div>
+    <div class="sets">S: <span id="setsB">0</span></div>
+  </div>
+</div>
+
+<script>
+let scoreNames = ["0","15","30","40"];
+
+let state = {
+  a:0,b:0,
+  gamesA:0,gamesB:0,
+  setsA:0,setsB:0,
+  adv:null
+};
+
+let history = [];
+
+let golden = false;
+let deuceCount = 0;
+let matchOver = false;
+
+let startTime = Date.now();
+
+function cloneState(){
+  return JSON.parse(JSON.stringify({
+    state,
+    golden,
+    deuceCount,
+    matchOver
+  }));
+}
+
+function saveState(){
+  history.push(cloneState());
+}
+
+function undo(){
+  if(history.length > 0){
+    let prev = history.pop();
+    state = prev.state;
+    golden = prev.golden;
+    deuceCount = prev.deuceCount;
+    matchOver = prev.matchOver;
+    update();
+  }
+}
+
+function updateTimer(){
+  let diff = Math.floor((Date.now()-startTime)/1000);
+  let m = String(Math.floor(diff/60)).padStart(2,'0');
+  let s = String(diff%60).padStart(2,'0');
+  document.getElementById("timer").innerText = m+":"+s;
+}
+setInterval(updateTimer,1000);
+
+function update(){
+  let displayA, displayB;
+
+  if(state.a>=3 && state.b>=3){
+    if(golden){
+      displayA="40"; displayB="40";
+    } else if(state.adv==="A"){
+      displayA="AD"; displayB="";
+    } else if(state.adv==="B"){
+      displayA=""; displayB="AD";
+    } else {
+      displayA="40"; displayB="40";
+    }
+  } else {
+    displayA = scoreNames[state.a];
+    displayB = scoreNames[state.b];
+  }
+
+  document.getElementById("pointsA").innerText = displayA;
+  document.getElementById("pointsB").innerText = displayB;
+  document.getElementById("gamesA").innerText = state.gamesA;
+  document.getElementById("gamesB").innerText = state.gamesB;
+  document.getElementById("setsA").innerText = state.setsA;
+  document.getElementById("setsB").innerText = state.setsB;
+
+  document.getElementById("mode").innerText =
+    matchOver ? "🏆 MATCH FINISHED" :
+    golden ? "🔥 GOLDEN POINT" :
+    "Normal";
+}
+
+function resetPoints(){
+  state.a=0; state.b=0; state.adv=null;
+  golden = false;
+}
+
+function checkMatchWin(){
+  if(state.setsA === 2){
+    matchOver = true;
+    alert("🏆 Team A wins!");
+  }
+  if(state.setsB === 2){
+    matchOver = true;
+    alert("🏆 Team B wins!");
+  }
+}
+
+function winGame(team){
+  if(team==="A") state.gamesA++;
+  else state.gamesB++;
+
+  resetPoints();
+
+  if(state.gamesA>=6 && state.gamesA-state.gamesB>=2){
+    state.setsA++;
+    state.gamesA=0; state.gamesB=0;
+    checkMatchWin();
+  }
+
+  if(state.gamesB>=6 && state.gamesB-state.gamesA>=2){
+    state.setsB++;
+    state.gamesA=0; state.gamesB=0;
+    checkMatchWin();
+  }
+}
+
+function handleDeuce(){
+  if(deuceCount === 0){
+    deuceCount++;
+  } else {
+    golden = true;
+  }
+}
+
+function pointA(){
+  if(matchOver) return;
+  saveState();
+
+  if(state.a<3) state.a++;
+  else{
+    if(state.b<3) winGame("A");
+    else{
+      if(state.adv === null){
+        handleDeuce();
+      }
+
+      if(golden){
+        winGame("A");
+      } else {
+        if(state.adv==="A") winGame("A");
+        else if(state.adv==="B") state.adv=null;
+        else state.adv="A";
+      }
+    }
+  }
+  update();
+}
+
+function pointB(){
+  if(matchOver) return;
+  saveState();
+
+  if(state.b<3) state.b++;
+  else{
+    if(state.a<3) winGame("B");
+    else{
+      if(state.adv === null){
+        handleDeuce();
+      }
+
+      if(golden){
+        winGame("B");
+      } else {
+        if(state.adv==="B") winGame("B");
+        else if(state.adv==="A") state.adv=null;
+        else state.adv="B";
+      }
+    }
+  }
+  update();
+}
+
+// TAP GESTURE
+let lastTap = 0;
+
+function handleTap(side){
+  let now = Date.now();
+
+  if(now - lastTap < 300){
+    undo();
+  } else {
+    if(side === "left") pointA();
+    else pointB();
+  }
+
+  lastTap = now;
+}
+
+document.getElementById("leftSide").addEventListener("click", () => handleTap("left"));
+document.getElementById("rightSide").addEventListener("click", () => handleTap("right"));
+
+// fullscreen
+function goFullscreen(){
+  if(document.documentElement.requestFullscreen){
+    document.documentElement.requestFullscreen();
+  }
+}
+document.body.addEventListener("click", goFullscreen);
+
+update();
+</script>
+
+</body>
+</html>
